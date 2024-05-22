@@ -4,7 +4,6 @@ import logging
 import os
 import time
 
-import numpy as np
 import torch
 
 from utils.data import SampleGenerator
@@ -40,8 +39,6 @@ if __name__ == '__main__':
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--use_cuda', type=bool, default=False)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--type', type=str, default='seed')
-    parser.add_argument('--comment', type=str, default='default')
 
     parser.add_argument('--agg_clients_ratio', type=float, default=0.1)
     parser.add_argument('--weight_decay', type=float, default=0.001)
@@ -66,10 +63,9 @@ if __name__ == '__main__':
     path = 'logs/'
     current_time = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
     log_file_name = os.path.join(path,
-                                 '[{}]-[{}.{}]-[{}.{}]-[{}].txt'.format(config['backbone'], config['dataset'],
-                                                                        config['data_file'].split('.')[0],
-                                                                        config['type'], config['comment'],
-                                                                        current_time))
+                                 '[{}]-[{}.{}]-[{}].txt'.format(config['backbone'], config['dataset'],
+                                                                config['data_file'].split('.')[0],
+                                                                current_time))
     initLogging(log_file_name)
 
     # Load Data
@@ -90,7 +86,6 @@ if __name__ == '__main__':
     # Initialize for training
     test_hrs, test_ndcgs, val_hrs, val_ndcgs, train_losses = [], [], [], [], []
     best_test_hr, final_test_round = 0, 0
-    # sparsity = []
 
     item_embeddings_init = torch.nn.Embedding(num_embeddings=config['num_items'], embedding_dim=config['latent_dim'])
 
@@ -103,7 +98,6 @@ if __name__ == '__main__':
 
         if config['use_cuda']:
             mlp_weights_init = mlp_weights_init.cuda()
-
 
     if config['use_cuda']:
         item_embeddings_init = item_embeddings_init.cuda()
@@ -133,11 +127,9 @@ if __name__ == '__main__':
 
         loss = sum(train_loss.values()) / len(train_loss.keys())
         train_losses.append(loss)
-        # sparsity.append(sparse_value)
 
         logging.info(
             '[Epoch {}/{}][Train] Loss = {:.4f}'.format(iteration + 1, config['global_round'], loss))
-
 
         # 2. Evaluations on Validation set
         val_hr, val_ndcg = engine.federatedEvaluate(validate_data)
@@ -166,8 +158,6 @@ if __name__ == '__main__':
             best_test_hr = hr
             final_test_round = iteration
 
-
-
     logging.info('--------------- The model training is finished ---------------')
 
     logging.info('[{}/{}][{}] Time consuming: {:.4f}'.format(config['dataset'],
@@ -188,11 +178,6 @@ if __name__ == '__main__':
     content['finish_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     content['hr'] = val_hrs[final_test_round]
     content['ndcg'] = val_ndcgs[final_test_round]
-
-    # save useful data
-    save_path = 'results/{}/{}/{}'.format(content['backbone'], content['dataset'], content['type'])
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
 
     logging.info('loss_list: {}'.format(train_losses))
     logging.info('hit_list: {}'.format(test_hrs))

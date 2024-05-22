@@ -64,7 +64,7 @@ def setSeed(seed=0):
     torch.backends.cudnn.deterministic = True
 
 
-def datasetFilter(ratings, min_items=5):
+def datasetFilter(ratings, min_items=10):
     """
             Only keep the data useful, which means:
                 - all ratings are non-zeros
@@ -91,7 +91,8 @@ def loadData(path, dataset, config, file_name='ratings.dat'):
     import os
     import pandas as pd
 
-    assert dataset in ['ml-100k', 'ml-1m', 'filmtrust', 'microlens'], "请使用指定数据集：ml-100k, ml-1m, filmtrust, microlens"
+    assert dataset in ['ml-100k', 'ml-1m', 'filmtrust',
+                       'microlens'], "Please use the specified dataset：ml-100k, ml-1m, filmtrust, microlens"
 
     dataset_file = os.path.join(path, dataset, file_name)
 
@@ -121,7 +122,6 @@ def loadData(path, dataset, config, file_name='ratings.dat'):
     else:
         ratings = pd.DataFrame()
 
-
     ratings = datasetFilter(ratings, min_rates)
 
     # Reindex user id and item id
@@ -133,13 +133,13 @@ def loadData(path, dataset, config, file_name='ratings.dat'):
     item_id['itemId'] = np.arange(len(item_id))
     ratings = pd.merge(ratings, item_id, on=['mid'], how='left')
 
-    # 先根据user进行升序排序，然后再每个用户上按照时间戳进行升序排序
-    ratings = ratings[['userId', 'itemId', 'rating', 'timestamp']].groupby('userId', group_keys=False).apply(lambda x: x.sort_values('timestamp'))
+    # First, sort by user in ascending order, then sort by timestamp in ascending order for each user.
+    ratings = ratings[['userId', 'itemId', 'rating', 'timestamp']].groupby('userId', group_keys=False).apply(
+        lambda x: x.sort_values('timestamp'))
 
     num_users, num_items = print_statistics(ratings)
 
     return ratings, num_users, num_items
-
 
 
 def print_statistics(ratings):
@@ -148,14 +148,17 @@ def print_statistics(ratings):
     num_interactions = len(ratings)
     sparsity = 1 - num_interactions / ((maxs['userId'] + 1) * (maxs['itemId'] + 1))
 
-    user_average_items = ratings.groupby('userId')['itemId'].count().sum()/(maxs['userId'] + 1)
-    item_avearge_users = ratings.groupby('itemId')['userId'].count().sum()/(maxs['itemId'] + 1)
+    user_average_items = ratings.groupby('userId')['itemId'].count().sum() / (maxs['userId'] + 1)
+    item_avearge_users = ratings.groupby('itemId')['userId'].count().sum() / (maxs['itemId'] + 1)
 
     logging.info('The number of users: {}, and of items: {}.'.format(int(maxs['userId'] + 1), int(maxs['itemId'] + 1)))
     logging.info('There are total {} interactions, the sparsity is {:.2f}%.'.format(num_interactions, sparsity * 100))
-    logging.info('The averaged number of items interacted by user : {:.2f}, and by item: {:.2f}.'.format(user_average_items, item_avearge_users))
+    logging.info(
+        'The averaged number of items interacted by user : {:.2f}, and by item: {:.2f}.'.format(user_average_items,
+                                                                                                item_avearge_users))
 
     return int(maxs['userId'] + 1), int(maxs['itemId'] + 1)
+
 
 def format_arg_str(arg_dict, exclude_lst: list, max_len=20) -> str:
     linesep = os.linesep

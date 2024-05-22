@@ -80,7 +80,8 @@ class SampleGenerator(object):
         val = ratings[ratings['rank_latest'] == 2]
         train = ratings[ratings['rank_latest'] > 2]
 
-        train = train.groupby('userId', group_keys=False).apply(lambda group: group.sample(frac=self.config['train_frac']))
+        train = train.groupby('userId', group_keys=False).apply(
+            lambda group: group.sample(frac=self.config['train_frac']))
         train = train.groupby('userId', group_keys=False).apply(lambda x: x.sort_values('timestamp'))
 
         assert train['userId'].nunique() == test['userId'].nunique() == val['userId'].nunique()
@@ -150,7 +151,6 @@ class SampleGenerator(object):
                                         item_tensor=torch.LongTensor(items),
                                         target_tensor=torch.FloatTensor(ratings))
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
 
     @property
     def train_data(self):

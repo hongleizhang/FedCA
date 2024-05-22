@@ -82,7 +82,7 @@ The meanings of the hyparameters are as follows:
 
 `latent_dim`: the dimensions of user and item embeddings, the default value is `16`.
 
-`mlp_layers`: the specific number of layers and units used in the multilayer perceptron, the default value is `[32, 16, 8, 1]`.
+`mlp_layers`: the specific number of layers and units used in MLPs, the default value is `[32, 16, 8, 1]`.
 
 `num_negative`: the number of negative samples used for local training, the default value is `4.0`.
 

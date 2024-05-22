@@ -1,9 +1,10 @@
 import copy
-import numpy as np
-import cvxpy as cp
 
+import cvxpy as cp
+import numpy as np
 import torch
 from sklearn.decomposition import PCA
+
 
 def aggregateByComposite(client_params, graph_matrix, config):
     # aggregated client params dict
@@ -21,14 +22,17 @@ def aggregateByComposite(client_params, graph_matrix, config):
             aggregated_client_params[user]['item_embeddings.weight'].data += neighbor_weight * neighbor_param
             if config['backbone'] == 'FedNCF':
                 for layer in range(len(config['mlp_layers']) - 1):
-                    aggregated_client_params[user]['mlp_weights.' + str(layer) + '.weight'].data += client_params[neighbor_user]['mlp_weights.' + str(layer) + '.weight'].data * neighbor_weight
-                    aggregated_client_params[user]['mlp_weights.' + str(layer) + '.bias'].data += client_params[neighbor_user]['mlp_weights.' + str(layer) + '.bias'].data * neighbor_weight
+                    aggregated_client_params[user]['mlp_weights.' + str(layer) + '.weight'].data += \
+                    client_params[neighbor_user]['mlp_weights.' + str(layer) + '.weight'].data * neighbor_weight
+                    aggregated_client_params[user]['mlp_weights.' + str(layer) + '.bias'].data += \
+                    client_params[neighbor_user]['mlp_weights.' + str(layer) + '.bias'].data * neighbor_weight
 
     return aggregated_client_params
 
 
-def update_composite_matrix_neighbor(graph_matrix, client_params, init_param, principal_list, client_sample_num, lambda_1,
-                                 lambda_2):
+def update_composite_matrix_neighbor(graph_matrix, client_params, init_param, principal_list, client_sample_num,
+                                     lambda_1,
+                                     lambda_2):
     index_clientid = list(client_params.keys())
     if lambda_2 == 0:
         model_similarity_matrix = torch.zeros_like(graph_matrix)
@@ -40,12 +44,13 @@ def update_composite_matrix_neighbor(graph_matrix, client_params, init_param, pr
         model_complementary_matrix = calculate_complementary(client_params, principal_list)
 
     graph_matrix = optimizing_composite_matrix_neighbor(graph_matrix, index_clientid, model_similarity_matrix,
-                                                    model_complementary_matrix, client_sample_num, lambda_1, lambda_2)
+                                                        model_complementary_matrix, client_sample_num, lambda_1,
+                                                        lambda_2)
     return graph_matrix, -model_similarity_matrix, model_complementary_matrix
 
 
 def optimizing_composite_matrix_neighbor(graph_matrix, client_id, client_similarity_matrix, client_complementary_matrix,
-                                     client_sample_num, lambda_1, lambda_2):
+                                         client_sample_num, lambda_1, lambda_2):
     fed_avg_freqs = calculate_client_weights(client_sample_num)
 
     n = client_similarity_matrix.shape[0]
@@ -61,7 +66,7 @@ def optimizing_composite_matrix_neighbor(graph_matrix, client_id, client_similar
         model_difference_vector = client_similarity_matrix[i]
         s = model_difference_vector.numpy()
         c = model_complementary_vector.numpy()
-        # a = s * c
+
         q = - lambda_1 * 2 * c + lambda_2 * 2 * s - 2 * p
 
         x = cp.Variable(n)
@@ -93,7 +98,7 @@ def calculate_l2_similarity(client_params, init_param):
             user_param_j = pca.fit_transform(user_param_j) - init_params
             user_param_j = torch.tensor(user_param_j).view(user_param_j.shape[1], -1)
 
-            distance = torch.norm(user_param_i - user_param_j)   # Efficient training for gpu
+            distance = torch.norm(user_param_i - user_param_j)  # Efficient training for gpu
             similarities = - 1 / (1 + distance)
 
             # calculate average similarity
@@ -179,10 +184,11 @@ def weight_client_server(user, client_model_params, server_model_param, map, mod
 
     if user in map:
         server_items_data = server_model_param[map[user]]['item_embeddings.weight'].data
-        client_param_dict['item_embeddings.weight'].data = config['interpolation'] * client_items_data + (1 - config['interpolation']) * server_items_data
+        client_param_dict['item_embeddings.weight'].data = config['interpolation'] * client_items_data + (
+                    1 - config['interpolation']) * server_items_data
     else:
         client_param_dict['item_embeddings.weight'].data = client_items_data
-    
+
     # for mlp layers param
     if config['backbone'] == 'FedNCF':
         for layer in range(len(config['mlp_layers']) - 1):
@@ -192,8 +198,14 @@ def weight_client_server(user, client_model_params, server_model_param, map, mod
             if user in map:
                 server_mlp_weight = server_model_param[map[user]]['mlp_weights.' + str(layer) + '.weight'].data
                 server_mlp_bias = server_model_param[map[user]]['mlp_weights.' + str(layer) + '.bias'].data
-                client_param_dict['mlp_weights.' + str(layer) + '.weight'].data = config['interpolation'] * client_mlp_weight + (1 - config['interpolation']) * server_mlp_weight
-                client_param_dict['mlp_weights.' + str(layer) + '.bias'].data = config['interpolation'] * client_mlp_bias + (1 - config['interpolation']) * server_mlp_bias
+                client_param_dict['mlp_weights.' + str(layer) + '.weight'].data = config[
+                                                                                      'interpolation'] * client_mlp_weight + (
+                                                                                              1 - config[
+                                                                                          'interpolation']) * server_mlp_weight
+                client_param_dict['mlp_weights.' + str(layer) + '.bias'].data = config[
+                                                                                    'interpolation'] * client_mlp_bias + (
+                                                                                            1 - config[
+                                                                                        'interpolation']) * server_mlp_bias
 
             else:
                 client_param_dict['mlp_weights.' + str(layer) + '.weight'].data = client_mlp_weight
@@ -207,5 +219,4 @@ def sub_matrix_shift(matrix):
     row_sums = matrix.sum(dim=1)
     matrix = matrix / row_sums.view(-1, 1)
 
-    # print(matrix)
     return matrix

@@ -1,5 +1,6 @@
 import torch
 
+
 class Loss(torch.nn.Module):
     def __init__(self, config):
         super(Loss, self).__init__()

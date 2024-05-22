@@ -2,13 +2,12 @@ import copy
 import random
 
 import torch
-# from opacus import PrivacyEngine
 from torch.utils.data import DataLoader
 
-from .tools import aggregateByComposite
-from .tools import get_principal, sub_matrix_shift, weight_client_server, update_composite_matrix_neighbor
 from utils.data import UserItemRatingDataset
 from utils.metrics import MetronAtK
+from .tools import aggregateByComposite
+from .tools import get_principal, sub_matrix_shift, weight_client_server, update_composite_matrix_neighbor
 
 
 class Engine(object):
@@ -23,7 +22,6 @@ class Engine(object):
         self.config = config  # model configuration
         self.server_model_param = {}
         self.client_model_params = {}
-        # self.sparsity = None
         self._metron = MetronAtK(top_k=self.config['top_k'])
 
     def instanceUserTrainLoader(self, user_train_data):
@@ -47,7 +45,6 @@ class Engine(object):
             items, ratings = items.cuda(), ratings.cuda()
             model_loss = model_loss.cuda()
 
-        # optimizer, optimizer_i = optimizers
         # update score function.
         optimizer.zero_grad()
         ratings_pred = model_client(items)
@@ -63,7 +60,6 @@ class Engine(object):
 
     def aggregateParamsFromClients(self, client_params, **kwargs):
         """receive client models' parameters in a round, aggregate them and store the aggregated result for server."""
-        data = None
         # KeyError
         if 'graph_matrix' not in kwargs or kwargs['graph_matrix'] is None:
             raise ValueError("The 'graph_matrix' argument cannot be empty.")
@@ -71,10 +67,7 @@ class Engine(object):
         self.server_model_param = copy.deepcopy(client_params)
         # aggregating
         self.server_model_param = aggregateByComposite(client_params, kwargs["graph_matrix"], self.config)
-        # results
-        data = copy.deepcopy(self.server_model_param)
-
-        return None
+        pass
 
     def federatedTrainOneRound(self, train_data, item_embeddings, mlp_weights, iteration):
         """sample users participating in single round."""
@@ -96,14 +89,10 @@ class Engine(object):
             loss = 0
 
             # for the first round, client models copy initialized parameters directly.
-            # copy the client model architecture from self.model
             client_model = copy.deepcopy(self.model)
             client_model.setItemEmbeddings(item_embeddings)
             if self.config['backbone'] == 'FedNCF':
                 client_model.setMLPweights(mlp_weights)
-
-            # server_param of user from server
-            server_param_dict = copy.deepcopy(self.model.state_dict())
 
             # for other rounds, client models receive updated item embedding and score function from server.
             if iteration != 0:
@@ -111,9 +100,9 @@ class Engine(object):
                 if user in self.client_model_params.keys():
                     for key in self.client_model_params[user].keys():
                         client_param_dict[key] = copy.deepcopy(self.client_model_params[user][key].data)
-         
-                client_param_dict = weight_client_server(user, self.client_model_params, self.server_model_param, 
-                                                            self.agg_participant_index_map, client_param_dict, self.config)
+
+                client_param_dict = weight_client_server(user, self.client_model_params, self.server_model_param,
+                                                         self.agg_participant_index_map, client_param_dict, self.config)
 
                 if self.config['use_cuda']:
                     for key in client_param_dict.keys():
@@ -122,7 +111,6 @@ class Engine(object):
                 client_model.load_state_dict(client_param_dict)
 
             # Defining optimizers
-            # optimizer is responsible for updating score function.
             if self.config['backbone'] == 'FCF':
                 optimizer = torch.optim.Adam([
                     {'params': client_model.user_embedding.parameters(), 'lr': self.config['lr_embedding']},
@@ -132,7 +120,8 @@ class Engine(object):
                 optimizer = torch.optim.Adam([
                     {'params': client_model.user_embedding.parameters(), 'lr': self.config['lr_embedding']},
                     {'params': client_model.item_embeddings.parameters(), 'lr': self.config['lr_embedding']},
-                    {'params': client_model.mlp_weights.parameters(), 'lr': self.config['lr_structure'], 'weight_decay': self.config['weight_decay']}
+                    {'params': client_model.mlp_weights.parameters(), 'lr': self.config['lr_structure'],
+                     'weight_decay': self.config['weight_decay']}
                 ])
 
             # load current user's training data and instance a train loader.
@@ -162,7 +151,6 @@ class Engine(object):
                     break
 
             # obtain client model parameters,
-            # and store client models' local parameters for personalization.
             self.client_model_params[user] = copy.deepcopy(client_model.state_dict())
 
             user_principal = get_principal(user_train_data, client_model.state_dict(), self.config['k_principal'])
@@ -186,11 +174,16 @@ class Engine(object):
         agg_client_sample_num = {idx: client_sample_num[user] for idx, user in enumerate(agg_participants)}
         self.agg_participant_index_map = {user: idx for idx, user in enumerate(agg_participants)}
 
-        self.graph_matrix, self.model_smi, self.model_comp = update_composite_matrix_neighbor(self.graph_matrix, agg_participants_params, self.model.state_dict(), agg_principal_list,
-                                                            agg_client_sample_num, self.config['alpha'], self.config['beta'])
+        self.graph_matrix, self.model_smi, self.model_comp = update_composite_matrix_neighbor(self.graph_matrix,
+                                                                                              agg_participants_params,
+                                                                                              self.model.state_dict(),
+                                                                                              agg_principal_list,
+                                                                                              agg_client_sample_num,
+                                                                                              self.config['alpha'],
+                                                                                              self.config['beta'])
         self.graph_matrix = sub_matrix_shift(self.graph_matrix)
-        data = self.aggregateParamsFromClients(agg_participants_params, client_sample_num=agg_client_sample_num,
-                                                graph_matrix=self.graph_matrix)
+        self.aggregateParamsFromClients(agg_participants_params, client_sample_num=agg_client_sample_num,
+                                        graph_matrix=self.graph_matrix)
 
         return losses
 
@@ -223,7 +216,7 @@ class Engine(object):
 
             if user in self.agg_participant_index_map:
                 user_param_dict = weight_client_server(user, self.client_model_params, self.server_model_param,
-                                                            self.agg_participant_index_map, user_param_dict, self.config)
+                                                       self.agg_participant_index_map, user_param_dict, self.config)
 
             user_model.load_state_dict(user_param_dict)
 
@@ -250,65 +243,6 @@ class Engine(object):
                                  negative_users.data.view(-1).tolist(),
                                  negative_items.data.view(-1).tolist(),
                                  negative_scores.data.view(-1).tolist()]
-
-        hr, ndcg = self._metron.cal_hit_ratio(), self._metron.cal_ndcg()
-
-        return hr, ndcg
-
-    @torch.no_grad()
-    def federatedEvaluateSingle(self, evaluate_data, client_id=0):
-        # evaluate all client models' performance using testing data.
-        test_users, test_items = evaluate_data[0], evaluate_data[1]
-        negative_users, negative_items = evaluate_data[2], evaluate_data[3]
-
-        if self.config['use_cuda'] is True:
-            test_users = test_users.cuda()
-            test_items = test_items.cuda()
-            negative_users = negative_users.cuda()
-            negative_items = negative_items.cuda()
-
-        # store all users' test item prediction score.
-        test_scores = None
-        # store all users' negative items prediction scores.
-        negative_scores = None
-
-        self.config['num_users'] = 1
-        for user in range(self.config['num_users']):
-            # load each user's mlp parameters.
-            user_model = copy.deepcopy(self.model)
-
-            if user in self.client_model_params.keys():
-                user_param_dict = copy.deepcopy(self.client_model_params[user])
-                for key in user_param_dict.keys():
-                    user_param_dict[key] = user_param_dict[key].data
-            else:
-                user_param_dict = copy.deepcopy(self.model.state_dict())
-
-            user_model.load_state_dict(user_param_dict)
-
-            user_model.eval()
-
-            # obtain user's positive test information.
-            test_item = test_items[user: user + 1]
-            # obtain user's negative test information.
-            negative_item = negative_items[user * 99: (user + 1) * 99]
-            # perform model prediction.
-            test_score = user_model(test_item)
-            negative_score = user_model(negative_item)
-
-            if user == 0:
-                test_scores = test_score
-                negative_scores = negative_score
-            else:
-                test_scores = torch.cat((test_scores, test_score))
-                negative_scores = torch.cat((negative_scores, negative_score))
-
-        self._metron.subjects = [test_users[client_id].data.view(-1).tolist(),
-                                 test_items[client_id].data.view(-1).tolist(),
-                                 test_scores[client_id].data.view(-1).tolist(),
-                                 negative_users[client_id * 99: (client_id + 1) * 99].data.view(-1).tolist(),
-                                 negative_items[client_id * 99: (client_id + 1) * 99].data.view(-1).tolist(),
-                                 negative_scores[client_id * 99: (client_id + 1) * 99].data.view(-1).tolist()]
 
         hr, ndcg = self._metron.cal_hit_ratio(), self._metron.cal_ndcg()
 

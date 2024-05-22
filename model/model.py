@@ -20,7 +20,6 @@ class FCF(torch.nn.Module):
 
         # self._init_weight_()
 
-
     def setItemEmbeddings(self, item_embeddings):
         self.item_embeddings = copy.deepcopy(item_embeddings)
 
@@ -38,6 +37,7 @@ class FCF(torch.nn.Module):
         rating = self.logistic(rating)
 
         return rating
+
 
 class FedNCF(torch.nn.Module):
     def __init__(self, config):
@@ -57,13 +57,11 @@ class FedNCF(torch.nn.Module):
 
         self.logistic = torch.nn.Sigmoid()
 
-
     def setItemEmbeddings(self, item_embeddings):
         self.item_embeddings = copy.deepcopy(item_embeddings)
 
     def setMLPweights(self, mlp_weights):
         self.mlp_weights = copy.deepcopy(mlp_weights)
-
 
     def forward(self, item_indices):
         item_embeddings = self.item_embeddings(item_indices)
@@ -73,11 +71,12 @@ class FedNCF(torch.nn.Module):
         vector = torch.cat([user_embedding, item_embeddings], dim=-1)
         for idx, _ in enumerate(range(len(self.mlp_weights))):
             vector = self.mlp_weights[idx](vector)
-            if idx != len(self.mlp_weights)-1:
+            if idx != len(self.mlp_weights) - 1:
                 vector = torch.nn.ReLU()(vector)
         rating = self.logistic(vector)
 
         return rating
+
 
 class ModelEngine(Engine):
     """Engine for training & evaluating FCF model"""

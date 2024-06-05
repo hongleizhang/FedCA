@@ -86,7 +86,7 @@ The meanings of the hyparameters are as follows:
 
 `num_negative`: the number of negative samples used for local training, the default value is `4.0`.
 
-`agg_clients_ratio`: the proportion used for participating in item embeddings aggregation, the default value is `0.6`.
+`agg_clients_ratio`: the proportion used for participating in item embeddings aggregation, the default value is `0.1`.
 
 `k_principal`: the number of singular value vectors used in SVD, the default value is `4.0`.
 

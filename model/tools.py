@@ -87,14 +87,14 @@ def calculate_l2_similarity(client_params, init_param):
     client_id = list(client_params.keys())
 
     pca = PCA(n_components=1, svd_solver='randomized', random_state=42)
-    init_params = pca.fit_transform(init_param['item_embeddings.weight'].data)
+    init_params = pca.fit_transform(init_param['item_embeddings.weight'].data.cpu().numpy())
     for i in range(len(client_id)):
-        user_param_i = client_params[client_id[i]]['item_embeddings.weight'].data
+        user_param_i = client_params[client_id[i]]['item_embeddings.weight'].data.cpu().numpy()
         # get user params
         user_param_i = pca.fit_transform(user_param_i) - init_params
         user_param_i = torch.tensor(user_param_i).view(user_param_i.shape[1], -1)
         for j in range(i, len(client_id)):
-            user_param_j = client_params[client_id[j]]['item_embeddings.weight'].data
+            user_param_j = client_params[client_id[j]]['item_embeddings.weight'].data.cpu().numpy()
             user_param_j = pca.fit_transform(user_param_j) - init_params
             user_param_j = torch.tensor(user_param_j).view(user_param_j.shape[1], -1)
 

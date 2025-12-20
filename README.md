@@ -6,6 +6,8 @@
 
 Federated recommendation aims to collect global knowledge by aggregating local models from massive devices, to provide recommendations while ensuring privacy. Current methods mainly leverage aggregation functions invented by federated vision community to aggregate parameters from similar clients, e.g., clustering aggregation. Despite considerable performance, we argue that it is suboptimal to apply them to federated recommendation directly. This is mainly reflected in the disparate model architectures. Different from structured parameters like convolutional neural networks in federated vision, federated recommender models usually distinguish itself by employing one-to-one item embedding table. Such a discrepancy induces the challenging embedding skew issue, which continually updates the trained embeddings but ignores the non-trained ones during aggregation, thus failing to predict future items accurately. To this end, we propose a personalized Federated recommendation model with Composite Aggregation (FedCA), which not only aggregates similar clients to enhance trained embeddings, but also aggregates complementary clients to update non-trained embeddings. Besides, we formulate the overall learning process into a unified optimization algorithm to jointly learn the similarity and complementarity. Extensive experiments on several real-world datasets substantiate the effectiveness of our proposed model.
 
+![](/figs/framework.png)
+
 ## Requirements
 
 The code is built on `Python=3.7` and `Pytorch=1.8`.
@@ -108,3 +110,17 @@ To run FCF with composite aggregation mode:
 To run FedNCF with composite aggregation mode:
 
   `python train.py --backbone='FedNCF' --dataset='filmtrust' --data_file='ratings.dat' --lr_structure=1e-2 --lr_embedding=1e-2`
+
+## Citation
+If this repository is useful for your research, please consider citing our paper:
+
+```
+@article{zhang2026fedca,
+  title={Beyond Similarity: Personalized Federated Recommendation with Composite Aggregation},
+  author={Honglei Zhang, Haoxuan Li, Jundong Chen, Sen Cui, Kunda Yan, Abudukelimu Wuerkaixi, Xin Zhou, Zhiqi Shen, Yidong Li},
+  journal={ACM Transactions on Information Systems},
+  year={2026},
+  publisher={ACM New York, NY}
+}
+```
+

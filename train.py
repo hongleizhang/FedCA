@@ -39,6 +39,8 @@ if __name__ == '__main__':
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--use_cuda', type=bool, default=False)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--model_path', type=str, default='checkpoints/fedca.pt',
+                        help='path used to save the trained model checkpoint')
 
     parser.add_argument('--agg_clients_ratio', type=float, default=0.1)
     parser.add_argument('--weight_decay', type=float, default=0.001)
@@ -159,6 +161,9 @@ if __name__ == '__main__':
             final_test_round = iteration
 
     logging.info('--------------- The model training is finished ---------------')
+
+    engine.saveCheckpoint(config['model_path'])
+    logging.info('Model checkpoint saved to %s', config['model_path'])
 
     logging.info('[{}/{}][{}] Time consuming: {:.4f}'.format(config['dataset'],
                                                              config['data_file'],

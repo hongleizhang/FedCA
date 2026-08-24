@@ -1,4 +1,5 @@
 import copy
+import os
 import random
 
 import torch
@@ -23,6 +24,25 @@ class Engine(object):
         self.server_model_param = {}
         self.client_model_params = {}
         self._metron = MetronAtK(top_k=self.config['top_k'])
+
+    def saveCheckpoint(self, checkpoint_path):
+        """Save all state required to resume evaluation of personalized clients."""
+        checkpoint_dir = os.path.dirname(os.path.abspath(checkpoint_path))
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        torch.save({
+            'config': copy.deepcopy(self.config),
+            'model_state_dict': self.model.state_dict(),
+            'client_model_params': self.client_model_params,
+            'server_model_param': self.server_model_param,
+            'agg_participant_index_map': self.agg_participant_index_map,
+        }, checkpoint_path)
+
+    def loadCheckpoint(self, checkpoint):
+        """Restore a checkpoint dictionary created by :meth:`saveCheckpoint`."""
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.client_model_params = checkpoint['client_model_params']
+        self.server_model_param = checkpoint['server_model_param']
+        self.agg_participant_index_map = checkpoint['agg_participant_index_map']
 
     def instanceUserTrainLoader(self, user_train_data):
         """instance a user's train loader."""

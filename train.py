@@ -41,8 +41,8 @@ if __name__ == '__main__':
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--use_cuda', type=bool, default=False)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--model_path', type=str, default='checkpoints/fedca.pt',
-                        help='path used to save the trained model checkpoint')
+    parser.add_argument('--model_path', type=str, default=None,
+                        help='checkpoint output path (default: checkpoints/<method>.pt)')
 
     parser.add_argument('--agg_clients_ratio', type=float, default=0.1)
     parser.add_argument('--weight_decay', type=float, default=0.001)
@@ -55,6 +55,8 @@ if __name__ == '__main__':
 
     # Config
     config = vars(args)
+    if config['model_path'] is None:
+        config['model_path'] = os.path.join('checkpoints', '{}.pt'.format(config['method']))
 
     # Set cuda
     if config['use_cuda'] is True:

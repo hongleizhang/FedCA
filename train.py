@@ -21,6 +21,8 @@ def loadEngine(configuration):
 if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser()
+    parser.add_argument('--method', type=str, default='fedca', choices=['fedca', 'fedavg'],
+                        help='federated aggregation method')
     parser.add_argument('--backbone', type=str, default='FCF', choices=['FCF', 'FedNCF'])
     parser.add_argument('--dataset', type=str, default='filmtrust')
     parser.add_argument('--data_file', type=str, default='ratings.dat')
@@ -39,6 +41,8 @@ if __name__ == '__main__':
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--use_cuda', type=bool, default=False)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--model_path', type=str, default=None,
+                        help='checkpoint output path (default: checkpoints/<method>.pt)')
 
     parser.add_argument('--agg_clients_ratio', type=float, default=0.1)
     parser.add_argument('--weight_decay', type=float, default=0.001)
@@ -51,6 +55,8 @@ if __name__ == '__main__':
 
     # Config
     config = vars(args)
+    if config['model_path'] is None:
+        config['model_path'] = os.path.join('checkpoints', '{}.pt'.format(config['method']))
 
     # Set cuda
     if config['use_cuda'] is True:
@@ -63,7 +69,7 @@ if __name__ == '__main__':
     path = 'logs/'
     current_time = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
     log_file_name = os.path.join(path,
-                                 '[{}]-[{}.{}]-[{}].txt'.format(config['backbone'], config['dataset'],
+                                 '[{}.{}]-[{}.{}]-[{}].txt'.format(config['method'], config['backbone'], config['dataset'],
                                                                 config['data_file'].split('.')[0],
                                                                 current_time))
     initLogging(log_file_name)
@@ -159,6 +165,9 @@ if __name__ == '__main__':
             final_test_round = iteration
 
     logging.info('--------------- The model training is finished ---------------')
+
+    engine.saveCheckpoint(config['model_path'])
+    logging.info('Model checkpoint saved to %s', config['model_path'])
 
     logging.info('[{}/{}][{}] Time consuming: {:.4f}'.format(config['dataset'],
                                                              config['data_file'],

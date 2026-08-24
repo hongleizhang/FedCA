@@ -111,6 +111,37 @@ To run FedNCF with composite aggregation mode:
 
   `python train.py --backbone='FedNCF' --dataset='filmtrust' --data_file='ratings.dat' --lr_structure=1e-2 --lr_embedding=1e-2`
 
+Select the federated aggregation algorithm with `--method`. `fedca` (the
+default) learns the personalized composite aggregation matrix. `fedavg` uses
+all participating clients and computes the sample-count weighted average of
+their uploaded item embeddings and, for FedNCF, MLP parameters:
+
+  `python train.py --method=fedca --backbone=FCF`
+
+  `python train.py --method=fedavg --backbone=FCF`
+
+FedAvg keeps each user's private user embedding locally while broadcasting the
+weighted-average shared parameters to clients in the next global round.
+
+Training saves a portable checkpoint containing the global and personalized client
+parameters. The default filename follows the selected method: FedCA is saved as
+`checkpoints/fedca.pt`, while FedAvg is saved as `checkpoints/fedavg.pt`. Use
+`--model_path` to select a different output path:
+
+  `python train.py --global_round=100 --model_path=checkpoints/fcf-filmtrust.pt`
+
+The saved model can be evaluated independently without retraining:
+
+  `python test.py --method=fedca`
+
+  `python test.py --method=fedavg`
+
+When `--model_path` is supplied to either script, it takes precedence over the
+method-based default path.
+
+Add `--use_cuda --device_id=0` to evaluate on CUDA, or `--top_k=20` to override
+the evaluation cutoff stored in the checkpoint.
+
 ## Citation
 If this repository is useful for your research, please consider citing our paper:
 

@@ -30,6 +30,23 @@ def aggregateByComposite(client_params, graph_matrix, config):
     return aggregated_client_params
 
 
+def aggregateByFedAvg(client_params, client_sample_num):
+    """Aggregate uploaded shared parameters using sample-count FedAvg weights."""
+    client_weights = calculate_client_weights(client_sample_num)
+    first_client = next(iter(client_params))
+    averaged_params = {
+        key: torch.zeros_like(value)
+        for key, value in client_params[first_client].items()
+    }
+
+    for client, params in client_params.items():
+        weight = client_weights[client]
+        for key, value in params.items():
+            averaged_params[key] += value * weight
+
+    return averaged_params
+
+
 def update_composite_matrix_neighbor(graph_matrix, client_params, init_param, principal_list, client_sample_num,
                                      lambda_1,
                                      lambda_2):

@@ -21,6 +21,8 @@ def loadEngine(configuration):
 if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser()
+    parser.add_argument('--method', type=str, default='fedca', choices=['fedca', 'fedavg'],
+                        help='federated aggregation method')
     parser.add_argument('--backbone', type=str, default='FCF', choices=['FCF', 'FedNCF'])
     parser.add_argument('--dataset', type=str, default='filmtrust')
     parser.add_argument('--data_file', type=str, default='ratings.dat')
@@ -65,7 +67,7 @@ if __name__ == '__main__':
     path = 'logs/'
     current_time = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
     log_file_name = os.path.join(path,
-                                 '[{}]-[{}.{}]-[{}].txt'.format(config['backbone'], config['dataset'],
+                                 '[{}.{}]-[{}.{}]-[{}].txt'.format(config['method'], config['backbone'], config['dataset'],
                                                                 config['data_file'].split('.')[0],
                                                                 current_time))
     initLogging(log_file_name)

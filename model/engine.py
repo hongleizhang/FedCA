@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from utils.data import UserItemRatingDataset
 from utils.metrics import MetronAtK
-from .tools import aggregateByComposite
+from .tools import aggregateByComposite, aggregateByFedAvg
 from .tools import get_principal, sub_matrix_shift, weight_client_server, update_composite_matrix_neighbor
 
 
@@ -21,7 +21,9 @@ class Engine(object):
 
     def __init__(self, config):
         self.config = config  # model configuration
+        self.config.setdefault('method', 'fedca')
         self.server_model_param = {}
+        self.shared_model_param = {}
         self.client_model_params = {}
         self._metron = MetronAtK(top_k=self.config['top_k'])
 
@@ -34,6 +36,7 @@ class Engine(object):
             'model_state_dict': self.model.state_dict(),
             'client_model_params': self.client_model_params,
             'server_model_param': self.server_model_param,
+            'shared_model_param': self.shared_model_param,
             'agg_participant_index_map': self.agg_participant_index_map,
         }, checkpoint_path)
 
@@ -42,6 +45,7 @@ class Engine(object):
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.client_model_params = checkpoint['client_model_params']
         self.server_model_param = checkpoint['server_model_param']
+        self.shared_model_param = checkpoint.get('shared_model_param', {})
         self.agg_participant_index_map = checkpoint['agg_participant_index_map']
 
     def instanceUserTrainLoader(self, user_train_data):
@@ -121,8 +125,13 @@ class Engine(object):
                     for key in self.client_model_params[user].keys():
                         client_param_dict[key] = copy.deepcopy(self.client_model_params[user][key].data)
 
-                client_param_dict = weight_client_server(user, self.client_model_params, self.server_model_param,
-                                                         self.agg_participant_index_map, client_param_dict, self.config)
+                if self.config['method'] == 'fedavg':
+                    for key, value in self.shared_model_param.items():
+                        client_param_dict[key] = copy.deepcopy(value)
+                else:
+                    client_param_dict = weight_client_server(
+                        user, self.client_model_params, self.server_model_param,
+                        self.agg_participant_index_map, client_param_dict, self.config)
 
                 if self.config['use_cuda']:
                     for key in client_param_dict.keys():
@@ -173,8 +182,10 @@ class Engine(object):
             # obtain client model parameters,
             self.client_model_params[user] = copy.deepcopy(client_model.state_dict())
 
-            user_principal = get_principal(user_train_data, client_model.state_dict(), self.config['k_principal'])
-            principal_list.append(user_principal)
+            if self.config['method'] == 'fedca':
+                user_principal = get_principal(
+                    user_train_data, client_model.state_dict(), self.config['k_principal'])
+                principal_list.append(user_principal)
 
             # store client models' local parameters for global update.
             participant_params[user] = copy.deepcopy(self.client_model_params[user])
@@ -182,7 +193,13 @@ class Engine(object):
             # delete all user-related data
             del participant_params[user]['user_embedding.weight']
 
-        # aggregate client models in server side.
+        if self.config['method'] == 'fedavg':
+            self.shared_model_param = aggregateByFedAvg(participant_params, client_sample_num)
+            self.server_model_param = {}
+            self.agg_participant_index_map = {}
+            return losses
+
+        # FedCA: select aggregation clients and optimize the composite matrix.
         agg_num = int(len(participants) * self.config["agg_clients_ratio"])
         agg_participants = random.sample(list(participant_params.keys()), agg_num)
         # map for user and idx
@@ -234,7 +251,10 @@ class Engine(object):
             else:
                 user_param_dict = copy.deepcopy(self.model.state_dict())
 
-            if user in self.agg_participant_index_map:
+            if self.config['method'] == 'fedavg':
+                for key, value in self.shared_model_param.items():
+                    user_param_dict[key] = copy.deepcopy(value)
+            elif user in self.agg_participant_index_map:
                 user_param_dict = weight_client_server(user, self.client_model_params, self.server_model_param,
                                                        self.agg_participant_index_map, user_param_dict, self.config)
 

@@ -36,6 +36,7 @@ def main():
     map_location = 'cuda:{}'.format(args.device_id) if args.use_cuda else 'cpu'
     checkpoint = torch.load(args.model_path, map_location=map_location)
     config = checkpoint['config'].copy()
+    config.setdefault('method', 'fedca')
     config['use_cuda'] = args.use_cuda
     config['device_id'] = args.device_id
     if args.top_k is not None:
